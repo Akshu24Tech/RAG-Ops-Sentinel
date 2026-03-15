@@ -11,3 +11,5 @@ ragas
 pandas
 python-dotenv
 tiktoken
+duckduckgo-search
+scrapling
