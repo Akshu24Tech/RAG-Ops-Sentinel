@@ -10,7 +10,7 @@ SentinelRAG is a high-performance RAG (Retrieval-Augmented Generation) system bu
 ## 🚀 Key Features
 
 -   **Agentic Self-Correction**: LLM-based grader ensures document relevance before generation.
--   **Web-Fallback**: Integration with **Tavily Search** for real-time internet context when local knowledge is insufficient.
+-   **Zero-Cost Web Fallback**: Uses **DuckDuckGo Search** and **Scrapling** to autonomously find and extract real-time internet context when local knowledge is insufficient.
 -   **Instrumentation**: OpenInference (OTLP) exporting to Arize Phoenix.
 -   **Custom Metrics**: TTFT, simulated cost, and context precision.
 -   **CI/CD Gating**: Standalone evaluation script for build validation.

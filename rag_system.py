@@ -4,7 +4,8 @@ from typing import List, Dict, Any, TypedDict
 from dotenv import load_dotenv
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_community.vectorstores import Chroma
-from tavily import TavilyClient
+from duckduckgo_search import DDGS
+from scrapling import StealthyFetcher
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, END
@@ -105,19 +106,38 @@ def grade_documents(state: GraphState):
 
 def web_search(state: GraphState):
     """
-    Web search based on the re-phrased question using Tavily.
+    Search DuckDuckGo for top URLs and scrape their contents using Scrapling.
     """
-    print("---WEB SEARCHING---")
+    print("---SEARCHING & SCRAPING THE WEB (FREE)---")
     question = state["question"]
     
-    # Initialize Tavily client directly
-    tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
-    search_results = tavily.search(query=question, max_results=3)
+    # 1. Search for URLs
+    results = []
+    try:
+        with DDGS() as ddgs:
+            ddg_gen = ddgs.text(question, max_results=3)
+            for r in ddg_gen:
+                results.append(r['href'])
+    except Exception as e:
+        print(f"DDG Search failed: {e}")
+        return {"context": state["context"]}
+
+    # 2. Scrape contents
+    web_results = []
+    for url in results:
+        print(f"Scraping: {url}...")
+        try:
+            page = StealthyFetcher.fetch(url, headless=True, timeout=15000)
+            # Simple text extraction from the first few paragraphs/sentences
+            text = page.get_all_text()
+            # Truncate content to keep it manageable for the LLM
+            truncated_text = text[:1500] + "..." if len(text) > 1500 else text
+            web_results.append(truncated_text)
+        except Exception as e:
+            print(f"Scraping {url} failed: {e}")
+            continue
     
-    # Format and combine with existing context
-    web_results = [res["content"] for res in search_results["results"]]
-    print(f"Web search found {len(web_results)} results.")
-    
+    print(f"Successfully scraped {len(web_results)} web sources.")
     return {"context": state["context"] + web_results}
 
 def generate(state: GraphState):
