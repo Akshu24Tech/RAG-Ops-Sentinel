@@ -9,12 +9,11 @@ SentinelRAG is a high-performance RAG (Retrieval-Augmented Generation) system bu
 
 ## 🚀 Key Features
 
--   **Deep Instrumentation**: Every graph node (Retrieve, Generate, Collector) is traced using OpenInference and exported to a local Arize Phoenix dashboard.
--   **Real-time Metrics**:
-    -   **TTFT (Time to First Token)**: Measure the responsiveness of your local LLM.
-    -   **Simulated Cost**: Track token usage mapped to industry-standard pricing (GPT-4o).
-    -   **Context Precision**: Automatic evaluation of retrieval quality.
--   **CI/CD Gating**: Standalone evaluation script that validates the system against a golden dataset using RAGAS Faithfulness scores.
+-   **Agentic Self-Correction**: LLM-based grader ensures document relevance before generation.
+-   **Web-Fallback**: Integration with **Tavily Search** for real-time internet context when local knowledge is insufficient.
+-   **Instrumentation**: OpenInference (OTLP) exporting to Arize Phoenix.
+-   **Custom Metrics**: TTFT, simulated cost, and context precision.
+-   **CI/CD Gating**: Standalone evaluation script for build validation.
 -   **Persistent Dashboard**: Dedicated background launcher ensures your observability data is always accessible.
 
 ## 🛠️ Tech Stack

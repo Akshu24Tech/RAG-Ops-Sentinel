@@ -1,11 +1,17 @@
 import os
 import time
 from typing import List, Dict, Any, TypedDict
+from dotenv import load_dotenv
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_community.vectorstores import Chroma
+from tavily import TavilyClient
 from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, END
 from observability import setup_observability, estimate_cost, count_tokens, flush_traces
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Observability
 ENABLE_PHOENIX = os.getenv("ENABLE_PHOENIX", "true").lower() == "true"
@@ -44,6 +50,7 @@ class GraphState(TypedDict):
     ttft: float
     cost: float
     precision_score: float
+    use_web: bool # Flag to trigger web search if local docs are poor
 
 # Nodes
 def retrieve(state: GraphState):
@@ -51,7 +58,67 @@ def retrieve(state: GraphState):
     question = state["question"]
     docs = vector_store.similarity_search(question, k=3)
     context = [doc.page_content for doc in docs]
-    return {"context": context}
+    return {"context": context, "use_web": False}
+
+def grade_documents(state: GraphState):
+    """
+    Determines whether the retrieved documents are relevant to the question.
+    """
+    print("---CHECKING RELEVANCE---")
+    question = state["question"]
+    documents = state["context"]
+    
+    class Grade(BaseModel):
+        """Binary score for relevance check."""
+        binary_score: str = Field(description="Relevance score 'yes' or 'no'")
+
+    try:
+        structured_llm = llm.with_structured_output(Grade)
+        prompt = ChatPromptTemplate.from_template("""
+        You are a grader assessing relevance of a retrieved document to a user question. 
+        If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. 
+        Retrieved Documents: {documents}
+        User Question: {question}
+        Give a binary score 'yes' or 'no' to indicate whether the document is relevant to the question.
+        """)
+        grader_chain = prompt | structured_llm
+        score = grader_chain.invoke({"question": question, "documents": " ".join(documents)})
+        binary_score = score.binary_score.lower()
+    except Exception as e:
+        print(f"Structured output failed, falling back to manual parsing: {e}")
+        prompt = ChatPromptTemplate.from_template("""
+        Is the following document relevant to the user question? 
+        Answer only with 'yes' or 'no'.
+        Document: {documents}
+        Question: {question}
+        """)
+        grader_chain = prompt | llm
+        response = grader_chain.invoke({"question": question, "documents": " ".join(documents)})
+        binary_score = "yes" if "yes" in response.content.lower() else "no"
+    
+    if binary_score == "yes":
+        print("---DECISION: DOCUMENTS RELEVANT---")
+        return {"use_web": False}
+    else:
+        print("---DECISION: DOCUMENTS NOT RELEVANT, TRIGGERING WEB SEARCH---")
+        return {"use_web": True}
+
+def web_search(state: GraphState):
+    """
+    Web search based on the re-phrased question using Tavily.
+    """
+    print("---WEB SEARCHING---")
+    question = state["question"]
+    
+    # Initialize Tavily client directly
+    tavily = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+    search_results = tavily.search(query=question, max_results=3)
+    
+    # Format and combine with existing context
+    web_results = [res["content"] for res in search_results["results"]]
+    print(f"Web search found {len(web_results)} results.")
+    
+    return {"context": state["context"] + web_results}
 
 def generate(state: GraphState):
     print("---GENERATING---")
@@ -60,19 +127,21 @@ def generate(state: GraphState):
     
     prompt = ChatPromptTemplate.from_template("""
     You are a helpful assistant. Use the following context to answer the question.
+    If the context is empty or irrelevant, just say you don't know based on the context.
+    
     Context: {context}
     Question: {question}
     Answer:
     """)
-    
-    chain = prompt | llm
     
     start_time = time.time()
     ttft = 0
     full_response = ""
     
     # Measure TTFT (Time To First Token)
-    for chunk in llm.stream(prompt.format(context=context, question=question)):
+    # format prompt properly
+    formatted_prompt = prompt.format(context=" ".join(context), question=question)
+    for chunk in llm.stream(formatted_prompt):
         if ttft == 0:
             ttft = time.time() - start_time
         full_response += chunk.content
@@ -108,11 +177,31 @@ def collector(state: GraphState):
 # Build Graph
 builder = StateGraph(GraphState)
 builder.add_node("retrieve", retrieve)
+builder.add_node("grade_documents", grade_documents)
+builder.add_node("web_search", web_search)
 builder.add_node("generate", generate)
 builder.add_node("collector", collector)
 
 builder.set_entry_point("retrieve")
-builder.add_edge("retrieve", "generate")
+builder.add_edge("retrieve", "grade_documents")
+
+# Binary routing
+def route_after_grading(state: GraphState):
+    if state["use_web"]:
+        return "web_search"
+    else:
+        return "generate"
+
+builder.add_conditional_edges(
+    "grade_documents",
+    route_after_grading,
+    {
+        "web_search": "web_search",
+        "generate": "generate"
+    }
+)
+
+builder.add_edge("web_search", "generate")
 builder.add_edge("generate", "collector")
 builder.add_edge("collector", END)
 
@@ -120,7 +209,7 @@ rag_app = builder.compile()
 
 if __name__ == "__main__":
     seed_data()
-    example_input = {"question": "What is LangGraph?"}
+    example_input = {"question": "What is the latest score of the most recent cricket match?"}
     result = rag_app.invoke(example_input)
     print("\n---FINAL RESULT---")
     print(f"Answer: {result['answer']}")
@@ -139,8 +228,8 @@ if __name__ == "__main__":
     else:
         print("\nPhoenix Dashboard could not be launched locally.")
         print("However, instrumentation is active. If a dashboard is already running at http://localhost:6006, please check it now.")
-        print("Waiting for 30 seconds for traces to flush...")
+        print("Waiting for 5 seconds for traces to flush...")
         try:
-            time.sleep(30)
+            time.sleep(5)
         except KeyboardInterrupt:
             print("\nStopped.")
