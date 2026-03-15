@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+ENV/
+.env
+
+# Project specific
+phoenix.db
+phoenix_data/
+chroma_db/
+debug_output.txt
+test_phoenix.log
+
+# IDEs
+.vscode/
+.idea/
+.gemini/
+.agents/
+.agent/
+_agents/
+_agent/
+brain/
+task.md
+implementation_plan.md
+walkthrough.md

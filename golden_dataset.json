@@ -1,0 +1,52 @@
+[
+  {
+    "question": "What is LangGraph?",
+    "ground_truth": "LangGraph is a library for building stateful, multi-actor applications with LLMs.",
+    "reference_contexts": ["LangGraph is a library for building stateful, multi-actor applications with LLMs."]
+  },
+  {
+    "question": "What is ChromaDB?",
+    "ground_truth": "ChromaDB is an open-source embedding database for AI applications.",
+    "reference_contexts": ["ChromaDB is an open-source embedding database for AI applications."]
+  },
+  {
+    "question": "What is Arize Phoenix used for?",
+    "ground_truth": "Arize Phoenix is a tool for observability and evaluation of LLM applications.",
+    "reference_contexts": ["Arize Phoenix is a tool for observability and evaluation of LLM applications."]
+  },
+  {
+    "question": "What is RAGAS?",
+    "ground_truth": "RAGAS is a framework for evaluating Retrieval Augmented Generation systems.",
+    "reference_contexts": ["RAGAS is a framework for evaluating Retrieval Augmented Generation systems."]
+  },
+  {
+    "question": "Who created Llama 3.2?",
+    "ground_truth": "Meta created Llama 3.2.",
+    "reference_contexts": ["Llama 3.2 is a state-of-the-art open source large language model from Meta."]
+  },
+  {
+    "question": "What is the primary focus of this RAG system setup?",
+    "ground_truth": "The primary focus is the Observability Pipeline.",
+    "reference_contexts": ["The primary focus is not the chat quality, but the Observability Pipeline."]
+  },
+  {
+    "question": "Which tool is used for instrumentation in this project?",
+    "ground_truth": "openinference-instrumentation-langchain is used for instrumentation.",
+    "reference_contexts": ["Use openinference-instrumentation-langchain to export every node execution."]
+  },
+  {
+    "question": "What metrics does the Collector node calculate?",
+    "ground_truth": "TTFT, Context Precision, and Estimated Cost.",
+    "reference_contexts": ["Create a 'Collector' node that calculates: TTFT, Context Precision, and Estimated Cost."]
+  },
+  {
+    "question": "What is the threshold for Faithfulness in the gating script?",
+    "ground_truth": "0.85",
+    "reference_contexts": ["If the average 'Faithfulness' score is below 0.85, the script should sys.exit(1)."]
+  },
+  {
+    "question": "What stack is used for the RAG system?",
+    "ground_truth": "Python, Ollama, LangGraph, and Arize Phoenix.",
+    "reference_contexts": ["Stack: Python, Ollama (Llama 3.2), LangGraph, Arize Phoenix."]
+  }
+]
