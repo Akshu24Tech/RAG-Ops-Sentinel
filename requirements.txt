@@ -13,3 +13,7 @@ python-dotenv
 tiktoken
 duckduckgo-search
 scrapling
+curl_cffi
+msgspec
+browserforge
+patchright
